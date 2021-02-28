@@ -7,7 +7,7 @@ import json
 def buySellPrice(contract):
     query = "https://esi.evetech.net/latest/markets/10000002/orders/"
     for i in range(len(contract)):
-
+        print("fetching price of %s" %(contract[0]))
         #buy, sell 초기화
         buyPrices = []
         sellPrices = []
@@ -96,6 +96,8 @@ if __name__ == '__main__':
                     continue
 
     # 멀티프로세스 객체 형성
+    idx = 0
+
     pool = multiprocessing.Pool(processes=4)
     contract = pool.map(buySellPrice, contract)
     pool.close()
@@ -116,6 +118,7 @@ if __name__ == '__main__':
     t = PrettyTable(['itemName', 'quantity', 'medianPrice', 'Total'])
     for obj in contract:
         t.add_row([obj[0], obj[1], obj[5], obj[6]])
+    t.add_row(["-", "-", "-", "-"])
     t.add_row(["Total", "", "", totalPrice])
     print(t)
 
