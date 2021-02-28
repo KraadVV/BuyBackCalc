@@ -26,7 +26,7 @@ def buySellPrice(contract):
         # ESI request
         response = requests.get(url=query, params=data)
 
-        # print(response)
+        print(response)
 
         # 바이, 셀 가격 모으는 부분
 
@@ -34,18 +34,30 @@ def buySellPrice(contract):
 
         # print(jsonObj)
         for j in range(len(jsonObj)):
-            if jsonObj[j].get("system_id") == 30000142:
-                if jsonObj[j].get("is_buy_order") == False:
-                    sellPrices.append(jsonObj[j].get("price"))
-                if jsonObj[j].get("is_buy_order") == True:
-                    buyPrices.append(jsonObj[j].get("price"))
-
+            try:
+                if jsonObj[j].get("system_id") == 30000142:
+                    if jsonObj[j].get("is_buy_order") == False:
+                        sellPrices.append(jsonObj[j].get("price"))
+                    if jsonObj[j].get("is_buy_order") == True:
+                        buyPrices.append(jsonObj[j].get("price"))
+            except:
+                print("jsonParseError")
+                pass
         buyPrices.sort(reverse=True)  # 내림차순
         sellPrices.sort()  # 오름차순
 
         # 셀가 1번째 값과 바이가 1번째 값을 더한 뒤 2로 나눈다. 이 값을 '셀바중' 값에 넣는다.
-        contract.append(buyPrices[0])
-        contract.append(sellPrices[0])
+        # 셀가나 바이가를 찾지 못하면 에러 처리후 0으로 넣는다.
+        try:
+            contract.append(buyPrices[0])
+        except:
+            print("no buy order found")
+            contract.append(0)
+        try:
+            contract.append(sellPrices[0])
+        except:
+            print("no sell order found")
+            contract.append(0)
 
         medianPrice = (buyPrices[0]+sellPrices[0]) / 2
         contract.append(medianPrice)
@@ -58,6 +70,7 @@ def recogContract(userString):
     userString = userString.split("\n")
     for rows in userString:
         rows = rows.split("\t")
+        rows[1] = rows[1].replace(",","")
         appendArray = [rows[0], int(rows[1])]
         contract.append(appendArray)
     #contract.append(["","","","","","",""])
