@@ -1,4 +1,4 @@
-from tabulate import tabulate
+from prettytable import PrettyTable
 import multiprocessing
 import csv
 import requests
@@ -111,10 +111,13 @@ if __name__ == '__main__':
 
 
     print("========Receipt========")
-    print(tabulate(contract, headers=["itemName", "quantity","itemNo", "BuyPrice", "SellPrice", "medianPrice", "Total"]))
-    print("=======================")
-    print("total %d isk" %totalPrice)
 
+
+    t = PrettyTable(['itemName', 'quantity', 'medianPrice', 'Total'])
+    for obj in contract:
+        t.add_row([obj[0], obj[1], obj[5], obj[6]])
+    t.add_row(["Total", "", "", totalPrice])
+    print(t)
 
     #https://esi.evetech.net/latest/markets/10000002/orders/?datasource=tranquility&order_type=all&page=1&type_id=2621 # 2621 = 인페르노 퓨리 크루즈
     #- 상기 url을 바탕으로 XML 형태를 받는다
