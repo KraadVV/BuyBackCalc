@@ -1,8 +1,52 @@
 from tabulate import tabulate
-import json
+import multiprocessing
 import csv
 import requests
 import json
+
+def buySellPrice(contract):
+    query = "https://esi.evetech.net/latest/markets/10000002/orders/"
+    for i in range(len(contract)):
+
+        #buy, sell 초기화
+        buyPrices = []
+        sellPrices = []
+
+        # id값을 기반으로 GET request
+        idx = 1
+        data = {'datasource': 'tranquility',
+                'order_type': 'all',
+                'page': idx,
+                'type_id': contract[2]}
+
+        # ESI request
+        response = requests.get(url=query, params=data)
+
+        # print(response)
+
+        # 바이, 셀 가격 모으는 부분
+
+        jsonObj = response.json()
+
+        # print(jsonObj)
+        for j in range(len(jsonObj)):
+            if jsonObj[j].get("system_id") == 30000142:
+                if jsonObj[j].get("is_buy_order") == False:
+                    sellPrices.append(jsonObj[j].get("price"))
+                if jsonObj[j].get("is_buy_order") == True:
+                    buyPrices.append(jsonObj[j].get("price"))
+
+        buyPrices.sort(reverse=True)  # 내림차순
+        sellPrices.sort()  # 오름차순
+
+        # 셀가 1번째 값과 바이가 1번째 값을 더한 뒤 2로 나눈다. 이 값을 '셀바중' 값에 넣는다.
+        contract.append(buyPrices[0])
+        contract.append(sellPrices[0])
+
+        medianPrice = (buyPrices[0]+sellPrices[0]) / 2
+        contract.append(medianPrice)
+
+        return contract
 
 
 if __name__ == '__main__':
@@ -18,8 +62,6 @@ if __name__ == '__main__':
 
 
     # 기존에 가지고 있던 CSV 파일에서 해당 물건의 ID값을 추출한다
-
-    query = "https://esi.evetech.net/latest/markets/10000002/orders/"
 
     #contract = [itemname, itemquantity, itemno, buy, sell, sbm]
     for i in range(len(contract)):
@@ -46,50 +88,18 @@ if __name__ == '__main__':
     with open('typeids.csv', encoding='utf8') as typeID:
         idTable = csv.reader(typeID)
 
-
         for row in idTable:
             for i in range(len(contract)):
                 if row[1] == contract[i][0]:
                     item_id = row[0]
                     contract[i].append(item_id)
                     continue
-    for i in range(len(contract)):
-        print("processing %d out of %d items" %(i+1, len(contract)))
 
-
-        #id값을 기반으로 GET request
-        idx = 1
-        data = {'datasource': 'tranquility',
-                'order_type': 'all',
-                'page': idx,
-                'type_id': item_id}
-
-        #ESI request
-        response = requests.get(url=query, params=data)
-
-
-        #print(response)
-
-        #바이, 셀 가격 모으는 부분
-        buyPrices = []
-        sellPrices = []
-        jsonObj = response.json()
-
-        #print(jsonObj)
-        for j in range(len(jsonObj)):
-            if jsonObj[j].get("system_id") == 30000142:
-                if jsonObj[j].get("is_buy_order") == False:
-                    sellPrices.append(jsonObj[j].get("price"))
-                if jsonObj[j].get("is_buy_order") == True:
-                    buyPrices.append(jsonObj[j].get("price"))
-
-        buyPrices.sort(reverse=True) #내림차순
-        sellPrices.sort() #오름차순
-
-        # 셀가 1번째 값과 바이가 1번째 값을 더한 뒤 2로 나눈다. 이 값을 '셀바중' 값에 넣는다.
-        contract[i].append(buyPrices[0])
-        contract[i].append(sellPrices[0])
-        contract[i].append((buyPrices[0]+sellPrices[0])/2)
+    # 멀티프로세스 객체 형성
+    pool = multiprocessing.Pool(processes=4)
+    contract = pool.map(buySellPrice, contract)
+    pool.close()
+    pool.join()
 
 
     totalPrice = 0
