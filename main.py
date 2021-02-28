@@ -1,14 +1,18 @@
 from prettytable import PrettyTable
+import tkinter
 import multiprocessing
 import csv
 import requests
-import json
 
+# contract = [itemname, itemquantity, itemno, buy, sell, sbm]
+
+# 바이셀 가격 받아오기
 def buySellPrice(contract):
     query = "https://esi.evetech.net/latest/markets/10000002/orders/"
     for i in range(len(contract)):
-        print("fetching price of %s" %(contract[0]))
+
         #buy, sell 초기화
+
         buyPrices = []
         sellPrices = []
 
@@ -48,24 +52,42 @@ def buySellPrice(contract):
 
         return contract
 
-
-if __name__ == '__main__':
-    # 유저 스트링을 인식, 이름과 수량을 이중 리스트로 빼낸다.
+# 유저 스트링을 인식, 이름과 수량을 이중 리스트로 빼낸다.
+def recogContract(userString):
     contract = []  # [itemName, quantity]
-    with open('contract example', encoding='utf8') as userString:
-        for rows in userString:
-            rows = rows.split("\t")
-            appendArray = [rows[0], int(rows[1])]
-            contract.append(appendArray)
+    userString = userString.split("\n")
+    for rows in userString:
+        rows = rows.split("\t")
+        appendArray = [rows[0], int(rows[1])]
+        contract.append(appendArray)
     #contract.append(["","","","","","",""])
     #print(contract)
+    return contract
+
+def receipt(contract, totalPrice):
+    t = PrettyTable(['itemName', 'quantity', 'medianPrice', 'Total'])
+    for obj in contract:
+        t.add_row([obj[0], obj[1], obj[5], obj[6]])
+    t.add_row(["-", "-", "-", "-"])
+    t.add_row(["Total", "", "", totalPrice])
+    return(t)
+
+def processClick():
+    userInput = txt.get()
+
+    list = recogContract(userInput)
+    list = idExtraction(list)
+    list, total = fetchTable(list)
+    #messagebox.showinfo("receipt", receipt(list, total))
+
+    output_entry_value.set(receipt(list, total))
 
 
-    # 기존에 가지고 있던 CSV 파일에서 해당 물건의 ID값을 추출한다
 
-    #contract = [itemname, itemquantity, itemno, buy, sell, sbm]
+# 기존에 가지고 있던 CSV 파일에서 해당 물건의 ID값을 추출한다
+def idExtraction(contract):
     for i in range(len(contract)):
-        #item_name 전처리
+        # item_name 전처리
         item_name = contract[i][0].replace('*', '')
         try:
             if item_name[0] == " ":
@@ -84,7 +106,7 @@ if __name__ == '__main__':
         except:
             pass
 
-        #idTable 열기, 아이템 이름에 맞는 아이템 ID 가져와서 append
+        # idTable 열기, 아이템 이름에 맞는 아이템 ID 가져와서 append
     with open('typeids.csv', encoding='utf8') as typeID:
         idTable = csv.reader(typeID)
 
@@ -94,6 +116,11 @@ if __name__ == '__main__':
                     item_id = row[0]
                     contract[i].append(item_id)
                     continue
+
+    return contract
+
+#ESI 접속하여 셀바이 가격 받아오기
+def fetchTable(contract):
 
     # 멀티프로세스 객체 형성
     idx = 0
@@ -111,16 +138,52 @@ if __name__ == '__main__':
 
         totalPrice += itemPrice
 
+    return contract, totalPrice
 
-    print("========Receipt========")
+def copyClick():
+    root.clipboard_clear()
+    root.clipboard_append(txt2.get())
 
 
-    t = PrettyTable(['itemName', 'quantity', 'medianPrice', 'Total'])
-    for obj in contract:
-        t.add_row([obj[0], obj[1], obj[5], obj[6]])
-    t.add_row(["-", "-", "-", "-"])
-    t.add_row(["Total", "", "", totalPrice])
-    print(t)
+if __name__ == '__main__':
+    #tkinter 기본
+
+    root = tkinter.Tk()
+    root.title("Jita Median Price calculator")
+    root.geometry("720x480")
+    root.resizable(0,0)
+
+    lbl = tkinter.Label(root, text = "paste your contract here")
+    lbl.grid(row=0, column=0, padx=10, pady=10, ipadx=20, ipady=10)
+
+    lbl2 = tkinter.Label(root, text = "Receipt")
+    lbl2.grid(row=0, column=1, padx=10, pady=10, ipadx=20, ipady=10)
+
+    process_value = tkinter.StringVar()
+    process = tkinter.Label(root, textvariable=process_value)
+
+    output_entry_value = tkinter.StringVar()
+
+    txt = tkinter.Entry(root)
+    txt.grid(row=1, column=0, padx=10, pady=10, ipadx=60, ipady=35)
+
+    txt2 = tkinter.Entry(root, textvariable=output_entry_value)
+    txt2.grid(row=1, column=1, padx=10, pady=10, ipadx=60, ipady=35)
+
+    btn = tkinter.Button(root, text="Start Calculation", command=processClick)
+    btn.grid(row=2, column=0, padx=10, pady=10, ipadx=20, ipady=10)
+
+    copybtn = tkinter.Button(root, text = "copy to clipboard", command=copyClick)
+    copybtn.grid(row=2,column=1, padx=10, pady=10, ipadx=20, ipady=10)
+
+    root.mainloop()
+
+
+
+
+
+#출력부
+
 
     #https://esi.evetech.net/latest/markets/10000002/orders/?datasource=tranquility&order_type=all&page=1&type_id=2621 # 2621 = 인페르노 퓨리 크루즈
     #- 상기 url을 바탕으로 XML 형태를 받는다
